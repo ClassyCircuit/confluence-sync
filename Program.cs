@@ -10,13 +10,36 @@ internal static class Program
 
         try
         {
-            log.Info("Starting Confluence sync...");
+            if (args.Any(a => string.Equals(a, "--help", StringComparison.OrdinalIgnoreCase) || string.Equals(a, "-h", StringComparison.OrdinalIgnoreCase)))
+            {
+                Console.WriteLine("Usage:");
+                Console.WriteLine("  dotnet run                Sync hardcoded page tree");
+                Console.WriteLine("  dotnet run --list-space   List pages in hardcoded space");
+                return 0;
+            }
 
             var email = Env.Required("CONFL_EMAIL");
             var apiKey = Env.Required("CONFL_API_KEY");
 
             using var http = ConfluenceRestClient.CreateHttpClient(config.BaseUri, email, apiKey);
             var client = new ConfluenceRestClient(http, log);
+
+            if (args.Any(a => string.Equals(a, "--list-space", StringComparison.OrdinalIgnoreCase)))
+            {
+                log.Info($"Listing pages in space '{config.SpaceKey}'...");
+
+                var count = 0;
+                await foreach (var dto in client.SearchPagesInSpace(config.SpaceKey, cancellationToken))
+                {
+                    count++;
+                    Console.WriteLine($"{dto.id}\t{dto.title}");
+                }
+
+                log.Info($"Listed {count} page(s).");
+                return 0;
+            }
+
+            log.Info("Starting Confluence sync...");
 
             var walker = new PageTreeWalker(client, log);
             var pages = await walker.FetchTree(config.RootPageId, cancellationToken);

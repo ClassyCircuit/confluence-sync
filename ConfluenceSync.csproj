@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Flurl" Version="4.0.0" />
     <PackageReference Include="ReverseMarkdown" Version="4.6.0" />
   </ItemGroup>
 

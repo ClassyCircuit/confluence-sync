@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using Flurl;
 
 namespace ConfluenceSync;
 
@@ -10,6 +11,8 @@ internal sealed class ConfluenceRestClient
     {
         PropertyNameCaseInsensitive = true
     };
+
+    private const int DefaultPageLimit = 50;
 
     private readonly HttpClient _http;
     private readonly ILogger _log;
@@ -36,8 +39,12 @@ internal sealed class ConfluenceRestClient
 
     public async Task<ContentDto> GetPageById(string pageId, CancellationToken cancellationToken)
     {
-        var relative = $"/rest/api/content/{pageId}?expand=space,body.storage";
-        _log.Info($"GET {relative}");
+        var relative = new Url("rest/api/content")
+            .AppendPathSegment(pageId)
+            .SetQueryParam("expand", "space,body.storage")
+            .ToString();
+
+        _log.Info($"GET /{relative}");
 
         try
         {
@@ -54,13 +61,19 @@ internal sealed class ConfluenceRestClient
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var start = 0;
-        const int limit = 50;
+        const int limit = DefaultPageLimit;
 
         while (true)
         {
-            var relative =
-                $"/rest/api/content/{parentId}/child/page?start={start}&limit={limit}&expand=space,body.storage";
-            _log.Info($"GET {relative}");
+            var relative = new Url("rest/api/content")
+                .AppendPathSegment(parentId)
+                .AppendPathSegment("child/page")
+                .SetQueryParam("start", start)
+                .SetQueryParam("limit", limit)
+                .SetQueryParam("expand", "space,body.storage")
+                .ToString();
+
+            _log.Info($"GET /{relative}");
 
             ContentListDto list;
             try
@@ -91,17 +104,66 @@ internal sealed class ConfluenceRestClient
         }
     }
 
+    public async IAsyncEnumerable<ContentDto> SearchPagesInSpace(
+        string spaceKey,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var start = 0;
+        const int limit = DefaultPageLimit;
+
+        // CQL: https://developer.atlassian.com/cloud/confluence/advanced-searching-using-cql/
+        // Note: space keys can contain '~', so always quote.
+        var cql = $"space=\"{spaceKey}\" and type=page order by title";
+
+        while (true)
+        {
+            var relative = new Url("rest/api/content/search")
+                .SetQueryParam("cql", cql)
+                .SetQueryParam("start", start)
+                .SetQueryParam("limit", limit)
+                .ToString();
+
+            _log.Info($"GET /{relative}");
+
+            ContentListDto list;
+            try
+            {
+                list = await GetJson<ContentListDto>(relative, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to search pages in space '{spaceKey}'.", ex);
+            }
+
+            if (list.results is null || list.results.Count == 0)
+            {
+                yield break;
+            }
+
+            foreach (var item in list.results)
+            {
+                yield return item;
+            }
+
+            start += list.results.Count;
+            if (list.results.Count < limit)
+            {
+                yield break;
+            }
+        }
+    }
+
     private async Task<T> GetJson<T>(string relativeUrl, CancellationToken cancellationToken)
     {
         using var resp = await _http.GetAsync(relativeUrl, cancellationToken);
-        _log.Info($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase} <- {relativeUrl}");
+        _log.Info($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase} <- /{relativeUrl}");
 
         var body = await resp.Content.ReadAsStringAsync(cancellationToken);
 
         if (!resp.IsSuccessStatusCode)
         {
             throw new InvalidOperationException(
-                $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase} while calling {relativeUrl}\n{body}");
+                $"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase} while calling /{relativeUrl}\n{body}");
         }
 
         return JsonSerializer.Deserialize<T>(body, JsonOptions)
@@ -134,5 +196,8 @@ internal sealed class ConfluenceRestClient
     internal sealed class ContentListDto
     {
         public List<ContentDto>? results { get; set; }
+        public int? start { get; set; }
+        public int? limit { get; set; }
+        public int? size { get; set; }
     }
 }
