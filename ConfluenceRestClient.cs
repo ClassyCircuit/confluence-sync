@@ -94,6 +94,8 @@ internal sealed class ConfluenceRestClient
     private async Task<T> GetJson<T>(string relativeUrl, CancellationToken cancellationToken)
     {
         using var resp = await _http.GetAsync(relativeUrl, cancellationToken);
+        _log.Info($"HTTP {(int)resp.StatusCode} {resp.ReasonPhrase} <- {relativeUrl}");
+
         var body = await resp.Content.ReadAsStringAsync(cancellationToken);
 
         if (!resp.IsSuccessStatusCode)

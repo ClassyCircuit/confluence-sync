@@ -12,8 +12,8 @@ internal static class Program
         {
             log.Info("Starting Confluence sync...");
 
-            var email = Env.Required("confl_email");
-            var apiKey = Env.Required("confl_api_key");
+            var email = Env.Required("CONFL_EMAIL");
+            var apiKey = Env.Required("CONFL_API_KEY");
 
             using var http = ConfluenceRestClient.CreateHttpClient(config.BaseUri, email, apiKey);
             var client = new ConfluenceRestClient(http, log);

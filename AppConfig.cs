@@ -8,7 +8,7 @@ internal sealed record AppConfig(
 {
     public static AppConfig Hardcoded() => new(
         BaseUri: new Uri("https://malvum.atlassian.net/wiki"),
-        SpaceKey: "codingmuch",
+        SpaceKey: "~557058ff7ebda7b4834355a36a176a142ec712",
         RootPageId: "7405569",
         OutputDirectory: "synced");
 }

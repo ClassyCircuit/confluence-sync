@@ -12,7 +12,7 @@ This is meant to produce Markdown files you can later feed into an LLM for analy
 ## What it syncs (hardcoded)
 
 - Confluence site: `https://malvum.atlassian.net/wiki`
-- Space: `codingmuch`
+- Space: `codingmuch` (personal space key: `~557058ff7ebda7b4834355a36a176a142ec712`)
 - Parent page: `The Judge`
   - URL: `https://malvum.atlassian.net/wiki/spaces/~557058ff7ebda7b4834355a36a176a142ec712/pages/7405569/The+Judge`
   - Page ID: `7405569`
@@ -48,8 +48,8 @@ Titles are taken from Confluence and minimally normalized for filesystem safety.
 
 Set these environment variables:
 
-- `confl_email` — your Atlassian account email
-- `confl_api_key` — your Confluence API token
+- `CONFL_EMAIL` — your Atlassian account email
+- `CONFL_API_KEY` — your Confluence API token
 
 Notes:
 - Atlassian Cloud typically uses **Basic auth** where the username is your email and the password is the API token.
@@ -61,8 +61,8 @@ Logging goes to stdout with UTC timestamps, so you can see exactly where failure
 From the repository root:
 
 ```bash
-export confl_email="you@example.com"
-export confl_api_key="<your-api-token>"
+export CONFL_EMAIL="you@example.com"
+export CONFL_API_KEY="<your-api-token>"
 
 dotnet run
 ```
