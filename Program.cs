@@ -6,16 +6,19 @@ internal static class Program
     {
         var config = AppConfig.Hardcoded();
         var cancellationToken = CancellationToken.None;
+        var log = new ConsoleLogger();
 
         try
         {
+            log.Info("Starting Confluence sync...");
+
             var email = Env.Required("confl_email");
             var apiKey = Env.Required("confl_api_key");
 
             using var http = ConfluenceRestClient.CreateHttpClient(config.BaseUri, email, apiKey);
-            var client = new ConfluenceRestClient(http);
+            var client = new ConfluenceRestClient(http, log);
 
-            var walker = new PageTreeWalker(client);
+            var walker = new PageTreeWalker(client, log);
             var pages = await walker.FetchTree(config.RootPageId, cancellationToken);
 
             var root = pages.First(p => p.Id == config.RootPageId);
@@ -26,16 +29,18 @@ internal static class Program
                 return 2;
             }
 
-            Console.WriteLine($"Fetched {pages.Count} page(s). Converting to Markdown...");
+            log.Info($"Space verified: '{root.SpaceKey}'");
+            log.Info($"Fetched {pages.Count} page(s). Exporting...");
 
-            var exporter = new PageExporter(config, new MarkdownConverter());
+            var exporter = new PageExporter(config, new MarkdownConverter(log), log);
             await exporter.ExportAll(pages, root.Title, cancellationToken);
 
+            log.Info("Done.");
             return 0;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine(ex.Message);
+            log.Error(ex, "Sync failed.");
             return 1;
         }
     }

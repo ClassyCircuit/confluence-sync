@@ -6,11 +6,13 @@ internal sealed class PageExporter
 {
     private readonly AppConfig _config;
     private readonly MarkdownConverter _markdown;
+    private readonly ILogger _log;
 
-    public PageExporter(AppConfig config, MarkdownConverter markdown)
+    public PageExporter(AppConfig config, MarkdownConverter markdown, ILogger log)
     {
         _config = config;
         _markdown = markdown;
+        _log = log;
     }
 
     public async Task ExportAll(
@@ -18,18 +20,30 @@ internal sealed class PageExporter
         string rootTitle,
         CancellationToken cancellationToken)
     {
+        _log.Info($"Ensuring output directory exists: '{_config.OutputDirectory}'");
         Directory.CreateDirectory(_config.OutputDirectory);
 
         var filenameBuilder = new FilenameBuilder(rootTitle);
 
         foreach (var page in pages)
         {
-            var markdown = BuildMarkdown(page);
             var filename = filenameBuilder.BuildMarkdownFilename(page);
             var filePath = Path.Combine(_config.OutputDirectory, filename);
 
-            await File.WriteAllTextAsync(filePath, markdown, Encoding.UTF8, cancellationToken);
-            Console.WriteLine($"Wrote {filePath}");
+            try
+            {
+                _log.Info($"Converting page '{page.Title}' ({page.Id}) -> {filename}");
+
+                var markdown = BuildMarkdown(page);
+                await File.WriteAllTextAsync(filePath, markdown, Encoding.UTF8, cancellationToken);
+
+                _log.Info($"Wrote {filePath}");
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException(
+                    $"Failed exporting page '{page.Title}' ({page.Id}) to '{filePath}'.", ex);
+            }
         }
     }
 

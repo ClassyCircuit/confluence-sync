@@ -56,6 +56,8 @@ Notes:
 
 ## Running
 
+Logging goes to stdout with UTC timestamps, so you can see exactly where failures happen.
+
 From the repository root:
 
 ```bash

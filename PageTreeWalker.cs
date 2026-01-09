@@ -13,8 +13,12 @@ internal sealed class PageTreeWalker
 
     public async Task<IReadOnlyList<ConfluencePage>> FetchTree(string rootPageId, CancellationToken cancellationToken)
     {
+        _log.Info($"Fetching root page {rootPageId}...");
+
         var rootDto = await _client.GetPageById(rootPageId, cancellationToken);
         var root = ToPage(rootDto, ancestorTitles: Array.Empty<string>());
+
+        _log.Info($"Root: '{root.Title}' ({root.Id})");
 
         var results = new List<ConfluencePage> { root };
         var stack = new Stack<ConfluencePage>();
@@ -23,6 +27,7 @@ internal sealed class PageTreeWalker
         while (stack.Count > 0)
         {
             var current = stack.Pop();
+            _log.Info($"Listing children of '{current.Title}' ({current.Id})");
 
             await foreach (var childDto in _client.GetChildPages(current.Id, cancellationToken))
             {
@@ -31,9 +36,12 @@ internal sealed class PageTreeWalker
 
                 results.Add(child);
                 stack.Push(child);
+
+                _log.Info($"Discovered: '{child.Title}' ({child.Id})");
             }
         }
 
+        _log.Info($"Total pages discovered: {results.Count}");
         return results;
     }
 
