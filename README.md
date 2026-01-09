@@ -67,14 +67,32 @@ dotnet run
 
 After a successful run, `./synced/` will contain Markdown files for the parent page and all descendants.
 
-## How it works (implementation plan)
+## Tasks (checked off as implemented)
 
-1. Call Confluence REST API to fetch the parent page content (storage/body) and metadata.
-2. Recursively enumerate descendants.
-   - Preferred approach: use Confluence’s endpoints for listing children, walking the tree until no more children.
-3. Convert Confluence storage format (XHTML) to Markdown.
-   - Use a popular, battle-tested HTML→Markdown converter for .NET.
-4. Write files under `./synced/`, always replacing existing content.
+- [x] Call Confluence REST API to fetch the parent page.
+- [x] Recursively enumerate all descendant pages.
+- [x] Convert Confluence storage (XHTML) to Markdown.
+- [x] Write Markdown files into `./synced/` (always overwritten).
+- [x] Refactor into small SOLID classes.
+
+## Code layout
+
+- `AppConfig.cs` hardcoded site/space/root/output.
+- `Env.cs` required env var helper.
+- `ConfluenceRestClient.cs` minimal Confluence REST calls.
+- `PageTreeWalker.cs` tree traversal (recursive/stack).
+- `MarkdownConverter.cs` storage HTML → Markdown.
+- `FilenameBuilder.cs` flat filename generation.
+- `PageExporter.cs` writes `.md` files.
+- `Program.cs` wiring/entrypoint.
+
+## How it works
+
+- Uses Confluence REST API endpoints:
+  - `GET /rest/api/content/{id}?expand=space,body.storage`
+  - `GET /rest/api/content/{id}/child/page?start=...&limit=...&expand=space,body.storage`
+- Walks the page tree using a stack (depth-first-ish) and handles child pagination.
+- Converts returned `body.storage.value` (XHTML) into Markdown using `ReverseMarkdown`.
 
 ## Non-goals
 
